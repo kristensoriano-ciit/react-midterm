@@ -1,0 +1,65 @@
+def runCommand(String command) {
+    if (isUnix()) {
+        sh command
+    } else {
+        bat command
+    }
+}
+
+pipeline {
+    agent any
+
+    options {
+        skipDefaultCheckout()
+        copyArtifactPermission('CD-React-App')
+    }
+
+    tools {
+        nodejs 'NodeJS-22'
+    }
+
+    environment {
+        CI = 'true'
+        BUILD_DIR = 'dist'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                deleteDir()
+                checkout scm
+            }
+        }
+
+        stage('Run Test') {
+            steps {
+                script {
+                    runCommand('npm ci')
+                    runCommand('npm test')
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                script {
+                    runCommand('npm run build')
+                }
+            }
+        }
+
+        stage('Archive Artifact') {
+            steps {
+                script {
+                    if (!fileExists("${env.BUILD_DIR}/index.html")) {
+                        error("Expected ${env.BUILD_DIR}/index.html after the build.")
+                    }
+
+                    def archive = "react-app-${env.BUILD_NUMBER}.tar.gz"
+                    runCommand("tar -czf ${archive} ${env.BUILD_DIR} Dockerfile")
+                    archiveArtifacts artifacts: archive, fingerprint: true
+                }
+            }
+        }
+    }
+}
