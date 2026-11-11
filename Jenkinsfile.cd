@@ -6,7 +6,7 @@ def runCommand(String command, boolean capture = false) {
 }
 
 pipeline {
-    agent any
+    agent { label 'windows-docker' }
 
     options {
         skipDefaultCheckout()
